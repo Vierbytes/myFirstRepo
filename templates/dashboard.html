@@ -1,0 +1,435 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - YouTube Agent{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_description %}Overview of your YouTube automation{% endblock %}
+
+{% block header_actions %}
+<a href="/create" class="btn btn-gradient">
+    <i class="fas fa-plus"></i> Create Video
+</a>
+<button class="btn btn-outline-primary" onclick="refreshData()">
+    <i class="fas fa-sync"></i> Refresh
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-video fa-2x mb-2"></i>
+                <h3 class="mb-1">{{ stats.total_videos }}</h3>
+                <p class="mb-0">Total Videos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card success">
+            <div class="card-body text-center">
+                <i class="fas fa-upload fa-2x mb-2"></i>
+                <h3 class="mb-1">{{ stats.successful_uploads }}</h3>
+                <p class="mb-0">Uploaded</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card warning">
+            <div class="card-body text-center">
+                <i class="fas fa-eye fa-2x mb-2"></i>
+                <h3 class="mb-1">{{ "{:,}".format(stats.total_views) }}</h3>
+                <p class="mb-0">Total Views</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card danger">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                <h3 class="mb-1">{{ "{:.1f}%".format(stats.success_rate) }}</h3>
+                <p class="mb-0">Success Rate</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Videos -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history"></i> Recent Videos
+                </h5>
+                <a href="/history" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if recent_videos %}
+                <div class="row">
+                    {% for video in recent_videos %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card video-card h-100">
+                            <div class="position-relative">
+                                <img src="/thumbnail/{{ video.id }}" class="video-thumbnail" alt="{{ video.title }}">
+                                <div class="position-absolute top-0 end-0 m-2">
+                                    {% if video.upload_status == 'success' %}
+                                    <span class="badge bg-success">Uploaded</span>
+                                    {% elif video.upload_status == 'created' %}
+                                    <span class="badge bg-warning">Ready</span>
+                                    {% elif video.upload_status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Pending</span>
+                                    {% endif %}
+                                </div>
+                                <div class="position-absolute bottom-0 end-0 m-2">
+                                    <small class="badge bg-dark bg-opacity-75">{{ video.category.title() }}</small>
+                                </div>
+                            </div>
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1" title="{{ video.title }}">
+                                    {{ video.title[:50] }}{% if video.title|length > 50 %}...{% endif %}
+                                </h6>
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar"></i> {{ video.created_at.strftime('%m/%d %H:%M') }}
+                                    {% if video.trending_score %}
+                                    <span class="ms-2">
+                                        <i class="fas fa-fire"></i> {{ "{:.0f}".format(video.trending_score) }}
+                                    </span>
+                                    {% endif %}
+                                </small>
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="viewVideoDetails({{ video.id }})">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    {% if video.upload_status == 'created' %}
+                                    <button class="btn btn-sm btn-success" onclick="uploadVideo({{ video.id }})">
+                                        <i class="fas fa-upload"></i> Upload
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-video fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No videos yet</h5>
+                    <p class="text-muted">Create your first video to get started!</p>
+                    <a href="/create" class="btn btn-gradient">
+                        <i class="fas fa-plus"></i> Create Video
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Info -->
+    <div class="col-lg-4">
+        <!-- Upload Schedule -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-alt"></i> Upload Schedule
+                </h5>
+                <a href="/schedule" class="btn btn-sm btn-outline-primary">Manage</a>
+            </div>
+            <div class="card-body">
+                {% if scheduled_uploads %}
+                {% for schedule in scheduled_uploads[:3] %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <strong>{{ schedule.time_slot }}</strong>
+                        <br>
+                        <small class="text-muted">{{ schedule.category.title() }} - {{ schedule.theme }}</small>
+                    </div>
+                    <span class="badge bg-{% if schedule.enabled %}success{% else %}secondary{% endif %}">
+                        {% if schedule.enabled %}Active{% else %}Disabled{% endif %}
+                    </span>
+                </div>
+                {% if not loop.last %}<hr class="my-2">{% endif %}
+                {% endfor %}
+                {% if scheduled_uploads|length > 3 %}
+                <div class="text-center mt-3">
+                    <small class="text-muted">+{{ scheduled_uploads|length - 3 }} more schedules</small>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="fas fa-calendar-plus fa-2x text-muted mb-2"></i>
+                    <p class="text-muted mb-2">No schedules set</p>
+                    <a href="/schedule" class="btn btn-sm btn-gradient">Add Schedule</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-gradient" onclick="createQuickVideo()">
+                        <i class="fas fa-magic"></i> Generate AI Video
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="showThemeSelector()">
+                        <i class="fas fa-palette"></i> Browse Themes
+                    </button>
+                    <button class="btn btn-outline-success" onclick="bulkUpload()">
+                        <i class="fas fa-cloud-upload-alt"></i> Bulk Upload
+                    </button>
+                    <a href="/settings" class="btn btn-outline-secondary">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Status -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-robot"></i> Agent Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <i class="fas fa-circle text-success"></i>
+                        <br>
+                        <small class="text-muted">Online</small>
+                    </div>
+                    <div class="col-6">
+                        <i class="fas fa-clock text-primary"></i>
+                        <br>
+                        <small class="text-muted">Scheduled</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <strong>{{ stats.total_videos }}</strong>
+                        <br>
+                        <small class="text-muted">Created</small>
+                    </div>
+                    <div class="col-4">
+                        <strong>{{ stats.successful_uploads }}</strong>
+                        <br>
+                        <small class="text-muted">Uploaded</small>
+                    </div>
+                    <div class="col-4">
+                        <strong>{{ scheduled_uploads|length }}</strong>
+                        <br>
+                        <small class="text-muted">Scheduled</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Theme Selector Modal -->
+<div class="modal fade" id="themeSelectorModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Video Theme</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    {% for category, themes in video_themes.items() %}
+                    <div class="col-md-4 mb-3">
+                        <h6>{{ category.title() }}</h6>
+                        {% for theme_name, theme_data in themes.items() %}
+                        <button class="btn btn-outline-primary btn-sm w-100 mb-2" 
+                                onclick="createVideoWithTheme('{{ category }}', '{{ theme_name }}')">
+                            {{ theme_name }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Video Details Modal -->
+<div class="modal fade" id="videoDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Video Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="videoDetailsContent">
+                <!-- Content loaded dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Create quick AI video
+async function createQuickVideo() {
+    try {
+        const data = await apiCall('/create/video', {
+            method: 'POST',
+            body: JSON.stringify({
+                category: 'gaming',
+                theme: 'Epic Moments'
+            })
+        });
+        
+        showToast('Video creation started! Check back in a few minutes.', 'success');
+        
+        // Refresh the page after a short delay
+        setTimeout(() => {
+            location.reload();
+        }, 2000);
+    } catch (error) {
+        console.error('Failed to create video:', error);
+    }
+}
+
+// Show theme selector
+function showThemeSelector() {
+    const modal = new bootstrap.Modal(document.getElementById('themeSelectorModal'));
+    modal.show();
+}
+
+// Create video with specific theme
+async function createVideoWithTheme(category, theme) {
+    try {
+        const formData = new FormData();
+        formData.append('category', category);
+        formData.append('theme', theme);
+        
+        const response = await fetch('/create/video', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast(`Creating ${theme} video in ${category} category...`, 'success');
+            
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('themeSelectorModal')).hide();
+            
+            // Refresh after delay
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            throw new Error(data.detail || 'Failed to create video');
+        }
+    } catch (error) {
+        showToast(error.message, 'danger');
+    }
+}
+
+// View video details
+async function viewVideoDetails(videoId) {
+    try {
+        const response = await fetch(`/video/${videoId}`);
+        const content = await response.text();
+        
+        document.getElementById('videoDetailsContent').innerHTML = content;
+        
+        const modal = new bootstrap.Modal(document.getElementById('videoDetailsModal'));
+        modal.show();
+    } catch (error) {
+        showToast('Failed to load video details', 'danger');
+    }
+}
+
+// Upload video
+async function uploadVideo(videoId) {
+    try {
+        const data = await apiCall(`/api/upload/${videoId}`, {
+            method: 'POST'
+        });
+        
+        showToast('Upload started! You will be notified when complete.', 'success');
+        
+        // Update button state
+        const button = event.target;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        button.disabled = true;
+        
+        // Refresh after delay
+        setTimeout(() => {
+            location.reload();
+        }, 3000);
+    } catch (error) {
+        console.error('Upload failed:', error);
+    }
+}
+
+// Bulk upload
+function bulkUpload() {
+    // Get all videos with 'created' status
+    const readyVideos = document.querySelectorAll('[data-status="created"]');
+    
+    if (readyVideos.length === 0) {
+        showToast('No videos ready for upload', 'warning');
+        return;
+    }
+    
+    if (confirm(`Upload ${readyVideos.length} videos to YouTube?`)) {
+        readyVideos.forEach((video, index) => {
+            const videoId = video.dataset.videoId;
+            // Stagger uploads to avoid rate limits
+            setTimeout(() => {
+                uploadVideo(videoId);
+            }, index * 2000);
+        });
+    }
+}
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    // Only refresh if no modals are open
+    if (!document.querySelector('.modal.show')) {
+        fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                // Update stats without full page refresh
+                updateStats(data);
+            })
+            .catch(error => console.log('Auto-refresh failed:', error));
+    }
+}, 30000);
+
+function updateStats(stats) {
+    // Update stat cards
+    const statElements = {
+        'total_videos': stats.total_videos,
+        'successful_uploads': stats.successful_uploads,
+        'total_views': stats.total_views ? stats.total_views.toLocaleString() : '0',
+        'success_rate': stats.success_rate.toFixed(1) + '%'
+    };
+    
+    Object.entries(statElements).forEach(([key, value]) => {
+        const element = document.querySelector(`[data-stat="${key}"]`);
+        if (element) {
+            element.textContent = value;
+        }
+    });
+}
+</script>
+{% endblock %}

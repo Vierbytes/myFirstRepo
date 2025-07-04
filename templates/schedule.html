@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule - YouTube Agent{% endblock %}
+
+{% block page_title %}Upload Schedule{% endblock %}
+{% block page_description %}Manage your automated upload times and content themes{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-gradient" onclick="showAddScheduleModal()">
+    <i class="fas fa-plus"></i> Add Schedule
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Current Schedules -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-alt"></i> Scheduled Uploads
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if schedules %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Category</th>
+                                <th>Theme</th>
+                                <th>Days</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for schedule in schedules %}
+                            <tr>
+                                <td>
+                                    <strong>{{ schedule.time_slot }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ schedule.category.title() }}</span>
+                                </td>
+                                <td>{{ schedule.theme }}</td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% set days = schedule.days_of_week | from_json if schedule.days_of_week else ['Daily'] %}
+                                        {{ days[:3] | join(', ') }}{% if days | length > 3 %} +{{ days | length - 3 }}{% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if schedule.enabled %}
+                                    <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Disabled</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="editSchedule({{ schedule.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-warning" onclick="toggleSchedule({{ schedule.id }}, {{ schedule.enabled | lower }})">
+                                            <i class="fas fa-{% if schedule.enabled %}pause{% else %}play{% endif %}"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deleteSchedule({{ schedule.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No schedules configured</h5>
+                    <p class="text-muted">Create your first upload schedule to automate video creation and uploading</p>
+                    <button class="btn btn-gradient" onclick="showAddScheduleModal()">
+                        <i class="fas fa-plus"></i> Add First Schedule
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Info -->
+    <div class="col-lg-4">
+        <!-- Schedule Tips -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb"></i> Schedule Tips
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-clock text-primary me-2"></i>
+                        <strong>Optimal Times:</strong> 12PM, 3PM, 6PM, 9PM for maximum engagement
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-chart-line text-success me-2"></i>
+                        <strong>Peak Days:</strong> Tuesday-Thursday typically perform best
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-palette text-warning me-2"></i>
+                        <strong>Theme Variety:</strong> Mix different themes to reach broader audience
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-sync text-info me-2"></i>
+                        <strong>Consistency:</strong> Regular posting builds audience expectations
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Popular Themes -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-fire"></i> Popular Themes
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for category, themes in video_themes.items() %}
+                <h6 class="text-primary">{{ category.title() }}</h6>
+                <div class="mb-3">
+                    {% for theme_name, theme_data in themes.items() %}
+                    <button class="btn btn-outline-secondary btn-sm me-1 mb-1" 
+                            onclick="quickAddSchedule('{{ category }}', '{{ theme_name }}')">
+                        {{ theme_name }}
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Schedule Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleModalTitle">Add Schedule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="scheduleForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="timeSlot" class="form-label">Upload Time</label>
+                        <input type="time" class="form-control" id="timeSlot" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-select" id="category" required onchange="updateThemes()">
+                            <option value="">Select Category</option>
+                            {% for category in video_themes.keys() %}
+                            <option value="{{ category }}">{{ category.title() }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="theme" class="form-label">Theme</label>
+                        <select class="form-select" id="theme" required>
+                            <option value="">Select Theme</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Days of Week</label>
+                        <div class="row">
+                            {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+                            <div class="col-6 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="{{ day }}" id="day{{ loop.index }}">
+                                    <label class="form-check-label" for="day{{ loop.index }}">
+                                        {{ day }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllDays()">All Days</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectWeekdays()">Weekdays</button>
+                            <button type="button" class="btn btn-sm btn-outline-info" onclick="selectWeekends()">Weekends</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="enabled" checked>
+                            <label class="form-check-label" for="enabled">
+                                Enable this schedule
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-gradient" id="saveScheduleBtn">
+                        <i class="fas fa-save"></i> Save Schedule
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Schedule Templates -->
+<div class="modal fade" id="quickScheduleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Quick Schedule Templates</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-rocket fa-2x text-primary mb-2"></i>
+                                <h6>Beginner Schedule</h6>
+                                <p class="text-muted small">2 uploads per day</p>
+                                <button class="btn btn-outline-primary btn-sm" onclick="applyTemplate('beginner')">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-fire fa-2x text-warning mb-2"></i>
+                                <h6>Growth Schedule</h6>
+                                <p class="text-muted small">4 uploads per day</p>
+                                <button class="btn btn-outline-warning btn-sm" onclick="applyTemplate('growth')">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-crown fa-2x text-success mb-2"></i>
+                                <h6>Pro Schedule</h6>
+                                <p class="text-muted small">6 uploads per day</p>
+                                <button class="btn btn-outline-success btn-sm" onclick="applyTemplate('pro')">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-clock fa-2x text-info mb-2"></i>
+                                <h6>Custom Schedule</h6>
+                                <p class="text-muted small">Build your own</p>
+                                <button class="btn btn-outline-info btn-sm" onclick="showAddScheduleModal()">Create</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const videoThemes = {{ video_themes | tojson }};
+let editingScheduleId = null;
+
+// Show add schedule modal
+function showAddScheduleModal() {
+    editingScheduleId = null;
+    document.getElementById('scheduleModalTitle').textContent = 'Add Schedule';
+    document.getElementById('scheduleForm').reset();
+    document.getElementById('saveScheduleBtn').innerHTML = '<i class="fas fa-save"></i> Save Schedule';
+    
+    const modal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+    modal.show();
+}
+
+// Show quick schedule templates
+function showQuickScheduleModal() {
+    const modal = new bootstrap.Modal(document.getElementById('quickScheduleModal'));
+    modal.show();
+}
+
+// Update themes based on selected category
+function updateThemes() {
+    const category = document.getElementById('category').value;
+    const themeSelect = document.getElementById('theme');
+    
+    themeSelect.innerHTML = '<option value="">Select Theme</option>';
+    
+    if (category && videoThemes[category]) {
+        Object.keys(videoThemes[category]).forEach(theme => {
+            const option = document.createElement('option');
+            option.value = theme;
+            option.textContent = theme;
+            themeSelect.appendChild(option);
+        });
+    }
+}
+
+// Day selection helpers
+function selectAllDays() {
+    document.querySelectorAll('input[type="checkbox"][id^="day"]').forEach(cb => cb.checked = true);
+}
+
+function selectWeekdays() {
+    document.querySelectorAll('input[type="checkbox"][id^="day"]').forEach((cb, index) => {
+        cb.checked = index < 5; // Monday-Friday
+    });
+}
+
+function selectWeekends() {
+    document.querySelectorAll('input[type="checkbox"][id^="day"]').forEach((cb, index) => {
+        cb.checked = index >= 5; // Saturday-Sunday
+    });
+}
+
+// Save schedule
+document.getElementById('scheduleForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const selectedDays = [];
+    document.querySelectorAll('input[type="checkbox"][id^="day"]:checked').forEach(cb => {
+        selectedDays.push(cb.value);
+    });
+    
+    if (selectedDays.length === 0) {
+        showToast('Please select at least one day', 'warning');
+        return;
+    }
+    
+    const scheduleData = {
+        time_slot: document.getElementById('timeSlot').value,
+        category: document.getElementById('category').value,
+        theme: document.getElementById('theme').value,
+        days_of_week: selectedDays,
+        enabled: document.getElementById('enabled').checked
+    };
+    
+    try {
+        const url = editingScheduleId ? `/schedule/${editingScheduleId}` : '/schedule/add';
+        const method = editingScheduleId ? 'PUT' : 'POST';
+        
+        const data = await apiCall(url, {
+            method: method,
+            body: JSON.stringify(scheduleData)
+        });
+        
+        showToast('Schedule saved successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
+        
+        // Refresh page
+        setTimeout(() => location.reload(), 1000);
+    } catch (error) {
+        console.error('Failed to save schedule:', error);
+    }
+});
+
+// Edit schedule
+function editSchedule(scheduleId) {
+    // This would typically fetch the schedule data and populate the form
+    editingScheduleId = scheduleId;
+    document.getElementById('scheduleModalTitle').textContent = 'Edit Schedule';
+    document.getElementById('saveScheduleBtn').innerHTML = '<i class="fas fa-save"></i> Update Schedule';
+    
+    const modal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+    modal.show();
+    
+    showToast('Edit functionality coming soon!', 'info');
+}
+
+// Toggle schedule
+async function toggleSchedule(scheduleId, currentStatus) {
+    try {
+        const data = await apiCall(`/schedule/${scheduleId}/toggle`, {
+            method: 'PATCH',
+            body: JSON.stringify({ enabled: !currentStatus })
+        });
+        
+        showToast(`Schedule ${currentStatus ? 'disabled' : 'enabled'}!`, 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch (error) {
+        console.error('Failed to toggle schedule:', error);
+    }
+}
+
+// Delete schedule
+async function deleteSchedule(scheduleId) {
+    if (!confirm('Are you sure you want to delete this schedule?')) {
+        return;
+    }
+    
+    try {
+        await apiCall(`/schedule/${scheduleId}`, {
+            method: 'DELETE'
+        });
+        
+        showToast('Schedule deleted successfully!', 'success');
+        setTimeout(() => location.reload(), 1000);
+    } catch (error) {
+        console.error('Failed to delete schedule:', error);
+    }
+}
+
+// Quick add schedule with theme
+function quickAddSchedule(category, theme) {
+    document.getElementById('category').value = category;
+    updateThemes();
+    setTimeout(() => {
+        document.getElementById('theme').value = theme;
+    }, 100);
+    
+    showAddScheduleModal();
+}
+
+// Apply schedule template
+function applyTemplate(templateType) {
+    const templates = {
+        beginner: [
+            { time: '12:00', category: 'gaming', theme: 'Epic Moments' },
+            { time: '18:00', category: 'anime', theme: 'Epic Fights' }
+        ],
+        growth: [
+            { time: '09:00', category: 'gaming', theme: 'Pro Tips' },
+            { time: '12:00', category: 'anime', theme: 'Emotional Moments' },
+            { time: '15:00', category: 'gaming', theme: 'Epic Moments' },
+            { time: '18:00', category: 'anime', theme: 'Epic Fights' }
+        ],
+        pro: [
+            { time: '08:00', category: 'educational', theme: 'Quick Facts' },
+            { time: '11:00', category: 'gaming', theme: 'Pro Tips' },
+            { time: '14:00', category: 'anime', theme: 'Emotional Moments' },
+            { time: '17:00', category: 'gaming', theme: 'Epic Moments' },
+            { time: '20:00', category: 'anime', theme: 'Epic Fights' },
+            { time: '22:00', category: 'educational', theme: 'Science' }
+        ]
+    };
+    
+    const template = templates[templateType];
+    if (!template) return;
+    
+    if (confirm(`This will create ${template.length} scheduled uploads. Continue?`)) {
+        template.forEach(async (schedule, index) => {
+            setTimeout(async () => {
+                try {
+                    await apiCall('/schedule/add', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            time_slot: schedule.time,
+                            category: schedule.category,
+                            theme: schedule.theme,
+                            days_of_week: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                            enabled: true
+                        })
+                    });
+                    
+                    if (index === template.length - 1) {
+                        showToast(`${templateType.charAt(0).toUpperCase() + templateType.slice(1)} template applied!`, 'success');
+                        setTimeout(() => location.reload(), 2000);
+                    }
+                } catch (error) {
+                    console.error('Failed to create schedule:', error);
+                }
+            }, index * 500); // Stagger the requests
+        });
+        
+        bootstrap.Modal.getInstance(document.getElementById('quickScheduleModal')).hide();
+    }
+}
+
+// Add quick template button to header if no schedules exist
+document.addEventListener('DOMContentLoaded', function() {
+    const hasSchedules = {{ 'true' if schedules else 'false' }};
+    if (!hasSchedules) {
+        const headerActions = document.querySelector('.header .col-auto .d-flex');
+        const templateBtn = document.createElement('button');
+        templateBtn.className = 'btn btn-outline-success';
+        templateBtn.innerHTML = '<i class="fas fa-magic"></i> Templates';
+        templateBtn.onclick = showQuickScheduleModal;
+        headerActions.insertBefore(templateBtn, headerActions.firstChild);
+    }
+});
+</script>
+{% endblock %}

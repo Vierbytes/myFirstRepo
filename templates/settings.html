@@ -1,0 +1,701 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - YouTube Agent{% endblock %}
+
+{% block page_title %}Settings{% endblock %}
+{% block page_description %}Configure your API keys and agent preferences{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Configuration Forms -->
+    <div class="col-lg-8">
+        <!-- YouTube API Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fab fa-youtube text-danger"></i> YouTube API Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="youtubeConfigForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="youtubeApiKey" class="form-label">API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="youtubeApiKey" 
+                                       value="{{ config.youtube_api_key }}" placeholder="Enter YouTube API Key">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('youtubeApiKey')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                Get your API key from <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a>
+                            </small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="youtubeClientId" class="form-label">Client ID</label>
+                            <input type="text" class="form-control" id="youtubeClientId" 
+                                   value="{{ config.youtube_client_id }}" placeholder="Enter Client ID">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="youtubeClientSecret" class="form-label">Client Secret</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="youtubeClientSecret" 
+                                   value="***" placeholder="Enter Client Secret">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('youtubeClientSecret')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-gradient">
+                        <i class="fas fa-save"></i> Save YouTube Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- OpenAI Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-robot text-success"></i> AI Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="aiConfigForm">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="openaiApiKey" class="form-label">OpenAI API Key</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="openaiApiKey" 
+                                       value="{{ config.openai_api_key }}" placeholder="Enter OpenAI API Key">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('openaiApiKey')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                Required for AI content generation. Get your key from <a href="https://platform.openai.com" target="_blank">OpenAI Platform</a>
+                            </small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="aiModel" class="form-label">AI Model</label>
+                            <select class="form-select" id="aiModel">
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Faster)</option>
+                                <option value="gpt-4" selected>GPT-4 (Better Quality)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="aiTemperature" class="form-label">Creativity Level</label>
+                            <input type="range" class="form-range" id="aiTemperature" min="0" max="1" step="0.1" value="0.7" onchange="updateTemperatureLabel()">
+                            <div class="d-flex justify-content-between">
+                                <small>Conservative</small>
+                                <small id="temperatureLabel">0.7</small>
+                                <small>Creative</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="aiMaxTokens" class="form-label">Max Response Length</label>
+                            <select class="form-select" id="aiMaxTokens">
+                                <option value="800">Short (800 tokens)</option>
+                                <option value="1200" selected>Medium (1200 tokens)</option>
+                                <option value="1600">Long (1600 tokens)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-gradient">
+                        <i class="fas fa-save"></i> Save AI Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Email Notifications -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-envelope text-primary"></i> Email Notifications
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="emailConfigForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="emailUsername" class="form-label">Gmail Username</label>
+                            <input type="email" class="form-control" id="emailUsername" 
+                                   value="{{ config.email_username }}" placeholder="your-email@gmail.com">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="emailPassword" class="form-label">App Password</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="emailPassword" 
+                                       value="***" placeholder="Enter App Password">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('emailPassword')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <small class="form-text text-muted">
+                                Use Gmail App Password, not your regular password. <a href="https://support.google.com/accounts/answer/185833" target="_blank">Learn how</a>
+                            </small>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="notificationEmail" class="form-label">Notification Email</label>
+                        <input type="email" class="form-control" id="notificationEmail" 
+                               value="{{ config.notification_email }}" placeholder="Where to send notifications">
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="enableNotifications" checked>
+                            <label class="form-check-label" for="enableNotifications">
+                                Enable email notifications for uploads and errors
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-gradient">
+                        <i class="fas fa-save"></i> Save Email Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Advanced Settings -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-cogs text-warning"></i> Advanced Settings
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="advancedConfigForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="videoQuality" class="form-label">Video Quality</label>
+                            <select class="form-select" id="videoQuality">
+                                <option value="720p">720p (Fast)</option>
+                                <option value="1080p" selected>1080p (Recommended)</option>
+                                <option value="1440p">1440p (High Quality)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="uploadRetries" class="form-label">Upload Retry Attempts</label>
+                            <select class="form-select" id="uploadRetries">
+                                <option value="1">1 Attempt</option>
+                                <option value="3" selected>3 Attempts</option>
+                                <option value="5">5 Attempts</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="logLevel" class="form-label">Log Level</label>
+                            <select class="form-select" id="logLevel">
+                                <option value="ERROR">Error Only</option>
+                                <option value="WARNING">Warning & Error</option>
+                                <option value="INFO" selected>Info, Warning & Error</option>
+                                <option value="DEBUG">All (Debug Mode)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="autoCleanup" checked>
+                                <label class="form-check-label" for="autoCleanup">
+                                    Auto-cleanup temporary files
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-gradient">
+                        <i class="fas fa-save"></i> Save Advanced Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Info -->
+    <div class="col-lg-4">
+        <!-- Configuration Status -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-check-circle"></i> Configuration Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        YouTube API
+                        <span class="badge bg-{{ 'success' if config.youtube_api_key else 'danger' }}">
+                            {{ 'Configured' if config.youtube_api_key else 'Missing' }}
+                        </span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        OpenAI API
+                        <span class="badge bg-{{ 'success' if config.openai_api_key else 'danger' }}">
+                            {{ 'Configured' if config.openai_api_key else 'Missing' }}
+                        </span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        Email Notifications
+                        <span class="badge bg-{{ 'success' if config.email_username else 'warning' }}">
+                            {{ 'Configured' if config.email_username else 'Optional' }}
+                        </span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        Upload Schedule
+                        <span class="badge bg-{{ 'success' if config.upload_times else 'warning' }}">
+                            {{ config.upload_times|length if config.upload_times else 0 }} Slots
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Connections -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-flask"></i> Test Connections
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-danger" onclick="testYouTubeConnection()">
+                        <i class="fab fa-youtube"></i> Test YouTube API
+                    </button>
+                    <button class="btn btn-outline-success" onclick="testOpenAIConnection()">
+                        <i class="fas fa-robot"></i> Test OpenAI API
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="testEmailConnection()">
+                        <i class="fas fa-envelope"></i> Test Email Settings
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="sendTestNotification()">
+                        <i class="fas fa-bell"></i> Send Test Notification
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backup & Security -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-shield-alt"></i> Backup & Security
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-info" onclick="exportConfig()">
+                        <i class="fas fa-download"></i> Export Config
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="importConfig()">
+                        <i class="fas fa-upload"></i> Import Config
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="resetToDefaults()">
+                        <i class="fas fa-undo"></i> Reset to Defaults
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="clearAllData()">
+                        <i class="fas fa-trash"></i> Clear All Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Setup Guide -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle"></i> Quick Setup Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <ol class="list-unstyled">
+                    <li class="mb-2">
+                        <span class="badge bg-primary me-2">1</span>
+                        Get YouTube API credentials from Google Cloud Console
+                    </li>
+                    <li class="mb-2">
+                        <span class="badge bg-primary me-2">2</span>
+                        Create OpenAI account and get API key
+                    </li>
+                    <li class="mb-2">
+                        <span class="badge bg-primary me-2">3</span>
+                        Configure Gmail app password (optional)
+                    </li>
+                    <li class="mb-2">
+                        <span class="badge bg-primary me-2">4</span>
+                        Test all connections and start creating!
+                    </li>
+                </ol>
+                <a href="https://docs.google.com" target="_blank" class="btn btn-sm btn-outline-info">
+                    <i class="fas fa-book"></i> View Full Guide
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Config Modal -->
+<div class="modal fade" id="importConfigModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="configFile" class="form-label">Select Config File</label>
+                    <input type="file" class="form-control" id="configFile" accept=".json">
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Importing will overwrite your current settings. Make sure to backup first.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="processConfigImport()">
+                    <i class="fas fa-upload"></i> Import
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle password visibility
+function togglePassword(fieldId) {
+    const field = document.getElementById(fieldId);
+    const icon = field.nextElementSibling.querySelector('i');
+    
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        field.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+// Update temperature label
+function updateTemperatureLabel() {
+    const temperature = document.getElementById('aiTemperature').value;
+    document.getElementById('temperatureLabel').textContent = temperature;
+}
+
+// Save YouTube configuration
+document.getElementById('youtubeConfigForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const configData = {
+        youtube_api_key: document.getElementById('youtubeApiKey').value,
+        youtube_client_id: document.getElementById('youtubeClientId').value,
+        youtube_client_secret: document.getElementById('youtubeClientSecret').value,
+        openai_api_key: '', // Don't change
+        email_username: '',
+        email_password: '',
+        notification_email: ''
+    };
+    
+    try {
+        await apiCall('/settings/update', {
+            method: 'POST',
+            body: JSON.stringify(configData)
+        });
+        
+        showToast('YouTube settings saved successfully!', 'success');
+    } catch (error) {
+        console.error('Failed to save YouTube settings:', error);
+    }
+});
+
+// Save AI configuration
+document.getElementById('aiConfigForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const configData = {
+        youtube_api_key: '',
+        youtube_client_id: '',
+        youtube_client_secret: '',
+        openai_api_key: document.getElementById('openaiApiKey').value,
+        email_username: '',
+        email_password: '',
+        notification_email: ''
+    };
+    
+    try {
+        await apiCall('/settings/update', {
+            method: 'POST',
+            body: JSON.stringify(configData)
+        });
+        
+        showToast('AI settings saved successfully!', 'success');
+    } catch (error) {
+        console.error('Failed to save AI settings:', error);
+    }
+});
+
+// Save email configuration
+document.getElementById('emailConfigForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const configData = {
+        youtube_api_key: '',
+        youtube_client_id: '',
+        youtube_client_secret: '',
+        openai_api_key: '',
+        email_username: document.getElementById('emailUsername').value,
+        email_password: document.getElementById('emailPassword').value,
+        notification_email: document.getElementById('notificationEmail').value
+    };
+    
+    try {
+        await apiCall('/settings/update', {
+            method: 'POST',
+            body: JSON.stringify(configData)
+        });
+        
+        showToast('Email settings saved successfully!', 'success');
+    } catch (error) {
+        console.error('Failed to save email settings:', error);
+    }
+});
+
+// Test YouTube connection
+async function testYouTubeConnection() {
+    try {
+        showLoading();
+        const response = await fetch('/api/test/youtube');
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('YouTube API connection successful!', 'success');
+        } else {
+            showToast('YouTube API connection failed: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showToast('Failed to test YouTube connection', 'danger');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Test OpenAI connection
+async function testOpenAIConnection() {
+    try {
+        showLoading();
+        const response = await fetch('/api/test/openai');
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('OpenAI API connection successful!', 'success');
+        } else {
+            showToast('OpenAI API connection failed: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showToast('Failed to test OpenAI connection', 'danger');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Test email connection
+async function testEmailConnection() {
+    try {
+        showLoading();
+        const response = await fetch('/api/test/email');
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Email connection successful!', 'success');
+        } else {
+            showToast('Email connection failed: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showToast('Failed to test email connection', 'danger');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Send test notification
+async function sendTestNotification() {
+    try {
+        showLoading();
+        const response = await fetch('/api/test/notification', { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('Test notification sent! Check your email.', 'success');
+        } else {
+            showToast('Failed to send test notification: ' + result.error, 'danger');
+        }
+    } catch (error) {
+        showToast('Failed to send test notification', 'danger');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Export configuration
+function exportConfig() {
+    const config = {
+        youtube_client_id: document.getElementById('youtubeClientId').value,
+        email_username: document.getElementById('emailUsername').value,
+        notification_email: document.getElementById('notificationEmail').value,
+        ai_model: document.getElementById('aiModel').value,
+        ai_temperature: document.getElementById('aiTemperature').value,
+        ai_max_tokens: document.getElementById('aiMaxTokens').value,
+        video_quality: document.getElementById('videoQuality').value,
+        upload_retries: document.getElementById('uploadRetries').value,
+        log_level: document.getElementById('logLevel').value,
+        auto_cleanup: document.getElementById('autoCleanup').checked,
+        enable_notifications: document.getElementById('enableNotifications').checked,
+        exported_at: new Date().toISOString()
+    };
+    
+    const dataStr = JSON.stringify(config, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = 'youtube_agent_config.json';
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    showToast('Configuration exported successfully!', 'success');
+}
+
+// Import configuration
+function importConfig() {
+    const modal = new bootstrap.Modal(document.getElementById('importConfigModal'));
+    modal.show();
+}
+
+// Process config import
+function processConfigImport() {
+    const fileInput = document.getElementById('configFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showToast('Please select a config file', 'warning');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const config = JSON.parse(e.target.result);
+            
+            // Populate form fields
+            if (config.youtube_client_id) document.getElementById('youtubeClientId').value = config.youtube_client_id;
+            if (config.email_username) document.getElementById('emailUsername').value = config.email_username;
+            if (config.notification_email) document.getElementById('notificationEmail').value = config.notification_email;
+            if (config.ai_model) document.getElementById('aiModel').value = config.ai_model;
+            if (config.ai_temperature) document.getElementById('aiTemperature').value = config.ai_temperature;
+            if (config.ai_max_tokens) document.getElementById('aiMaxTokens').value = config.ai_max_tokens;
+            if (config.video_quality) document.getElementById('videoQuality').value = config.video_quality;
+            if (config.upload_retries) document.getElementById('uploadRetries').value = config.upload_retries;
+            if (config.log_level) document.getElementById('logLevel').value = config.log_level;
+            if (config.auto_cleanup !== undefined) document.getElementById('autoCleanup').checked = config.auto_cleanup;
+            if (config.enable_notifications !== undefined) document.getElementById('enableNotifications').checked = config.enable_notifications;
+            
+            bootstrap.Modal.getInstance(document.getElementById('importConfigModal')).hide();
+            showToast('Configuration imported successfully!', 'success');
+            
+        } catch (error) {
+            showToast('Invalid config file format', 'danger');
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Reset to defaults
+function resetToDefaults() {
+    if (!confirm('Are you sure you want to reset all settings to defaults? This will clear your API keys.')) {
+        return;
+    }
+    
+    // Reset all form fields
+    document.getElementById('youtubeApiKey').value = '';
+    document.getElementById('youtubeClientId').value = '';
+    document.getElementById('youtubeClientSecret').value = '';
+    document.getElementById('openaiApiKey').value = '';
+    document.getElementById('emailUsername').value = '';
+    document.getElementById('emailPassword').value = '';
+    document.getElementById('notificationEmail').value = '';
+    document.getElementById('aiModel').value = 'gpt-4';
+    document.getElementById('aiTemperature').value = '0.7';
+    document.getElementById('aiMaxTokens').value = '1200';
+    document.getElementById('videoQuality').value = '1080p';
+    document.getElementById('uploadRetries').value = '3';
+    document.getElementById('logLevel').value = 'INFO';
+    document.getElementById('autoCleanup').checked = true;
+    document.getElementById('enableNotifications').checked = true;
+    
+    updateTemperatureLabel();
+    showToast('Settings reset to defaults', 'info');
+}
+
+// Clear all data
+async function clearAllData() {
+    const confirmation = prompt('This will delete ALL videos, schedules, and settings. Type "DELETE ALL" to confirm:');
+    
+    if (confirmation !== 'DELETE ALL') {
+        showToast('Operation cancelled', 'info');
+        return;
+    }
+    
+    try {
+        await apiCall('/api/clear-all-data', {
+            method: 'POST'
+        });
+        
+        showToast('All data cleared successfully', 'success');
+        setTimeout(() => location.reload(), 2000);
+    } catch (error) {
+        showToast('Failed to clear data', 'danger');
+    }
+}
+
+// Auto-save form changes
+document.addEventListener('input', function(e) {
+    if (e.target.type === 'range') {
+        updateTemperatureLabel();
+    }
+    
+    // Show unsaved changes indicator
+    if (e.target.form) {
+        const saveButton = e.target.form.querySelector('button[type="submit"]');
+        if (saveButton && !saveButton.classList.contains('btn-warning')) {
+            saveButton.classList.remove('btn-gradient');
+            saveButton.classList.add('btn-warning');
+            saveButton.innerHTML = saveButton.innerHTML.replace('Save', 'Save Changes');
+        }
+    }
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case 's':
+                e.preventDefault();
+                // Save current active form
+                const activeForm = document.querySelector('form:focus-within');
+                if (activeForm) {
+                    activeForm.dispatchEvent(new Event('submit'));
+                }
+                break;
+        }
+    }
+});
+</script>
+{% endblock %}
