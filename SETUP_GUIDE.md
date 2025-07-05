@@ -3,10 +3,52 @@
 
 ## 🛠️ What You Need Before Starting
 
-### 1. Install Python
-- Go to [python.org](https://python.org) and download Python 3.8 or newer
-- During installation, **check the box** that says "Add Python to PATH"
-- To test: Open terminal/command prompt and type `python --version`
+### 1. Install Python (SPECIFIC VERSION REQUIRED)
+
+#### 🐍 **Recommended Python Version: 3.10.11 or 3.11.6**
+
+**Why these versions?** Your requirements.txt includes TensorFlow 2.15.0 which doesn't support Python 3.12+ yet.
+
+| Python Version | Status | Recommendation |
+|---|---|---|
+| **3.10.11** | ✅ **BEST CHOICE** | Most stable, all packages tested |
+| **3.11.6** | ✅ **EXCELLENT** | Faster performance, full compatibility |
+| 3.9.x | ⚠️ OK | Works but older |
+| 3.8.x | ⚠️ MINIMAL | Some packages may have issues |
+| 3.12.x | ❌ **AVOID** | TensorFlow not compatible yet |
+
+#### Download Links:
+- **Python 3.10.11**: https://www.python.org/downloads/release/python-31011/
+- **Python 3.11.6**: https://www.python.org/downloads/release/python-3116/
+
+#### Installation Steps:
+**Windows:**
+1. Download "Windows installer (64-bit)"
+2. ✅ **IMPORTANT:** Check "Add Python to PATH" during installation
+3. Restart your computer after installation
+
+**macOS:**
+1. Download "macOS 64-bit universal2 installer"
+2. Or use homebrew: `brew install python@3.10`
+
+**Linux:**
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install python3.10 python3.10-pip python3.10-venv
+
+# CentOS/RHEL
+sudo yum install python3.10 python3.10-pip
+```
+
+#### Verify Installation:
+```bash
+python --version
+# Should show: Python 3.10.11 (or 3.11.6)
+
+pip --version
+# Should show pip version with your Python version
+```
 
 ### 2. Get API Keys (Required for both versions)
 
@@ -175,9 +217,19 @@ python run_dashboard.py
 
 ### "Python not found"
 - **Solution:** Reinstall Python and check "Add to PATH"
+- **Also try:** `python3 --version` instead of `python --version`
 
 ### "pip not found"  
 - **Solution:** Use `python -m pip install -r requirements.txt`
+- **Or try:** `python3 -m pip install -r requirements.txt`
+
+### "TensorFlow installation failed" or "No matching distribution"
+- **Solution:** You're using Python 3.12+, downgrade to Python 3.10.11 or 3.11.6
+- **Check version:** `python --version` should show 3.10.x or 3.11.x
+
+### "Package installation errors"
+- **Solution:** Make sure you're using the correct Python version (3.10.11 or 3.11.6)
+- **Try:** `pip install --upgrade pip` first, then install requirements
 
 ### "API key invalid"
 - **Solution:** Double-check your keys in the settings page (v1.2) or re-run `secure_config.py` (v1.0)
@@ -190,6 +242,10 @@ python run_dashboard.py
 
 ### "Videos have no audio"
 - **Solution:** Check if `edge-tts` is installed: `pip install edge-tts`
+
+### "ModuleNotFoundError" after installation
+- **Solution:** Make sure you're running Python from the same environment where you installed packages
+- **Try:** `python -m pip list` to see installed packages
 
 ---
 
