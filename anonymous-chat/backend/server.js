@@ -9,8 +9,9 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: true, // Allow all origins for mobile access
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
@@ -133,6 +134,6 @@ app.get('/api/messages', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Anonymous chat server running on port ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`Anonymous chat server running on port ${PORT} and accessible from any device`);
 });

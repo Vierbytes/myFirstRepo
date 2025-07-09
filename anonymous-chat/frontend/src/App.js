@@ -2,7 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import './App.css';
 
-const socket = io('http://localhost:5000');
+// Dynamically detect the server URL for mobile access
+const getServerURL = () => {
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  const port = window.location.port === '3000' ? '5000' : '5000';
+  return `${protocol}//${hostname}:${port}`;
+};
+
+const socket = io(getServerURL());
 
 function App() {
   const [messages, setMessages] = useState([]);
